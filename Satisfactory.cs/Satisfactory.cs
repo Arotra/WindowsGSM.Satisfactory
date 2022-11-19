@@ -7,7 +7,8 @@ using WindowsGSM.GameServer.Engine;
 using System.IO;
 using System.Linq;
 using System.Net;
-
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace WindowsGSM.Plugins
 {
@@ -26,7 +27,7 @@ namespace WindowsGSM.Plugins
 
         // - Settings properties for SteamCMD installer
         public override bool loginAnonymous => true;
-        public override string AppId => "1690800 -beta public"; // Game server appId Steam
+        public override string AppId => "1690800"; // Game server appId Steam
 
         // - Standard Constructor and properties
         public Satisfactory(ServerConfig serverData) : base(serverData) => base.serverData = _serverData = serverData;
@@ -52,7 +53,7 @@ namespace WindowsGSM.Plugins
         public string Defaultmap = "Dedicated"; // Default map name
 
         // TODO: May not support
-        public string Maxplayers = "4"; // Default maxplayers
+        public string Maxplayers = "16"; // Default maxplayers
 
         public string Additional = ""; // Additional server start parameter
 
@@ -60,7 +61,35 @@ namespace WindowsGSM.Plugins
         // - Create a default cfg for the game server after installation
         public async void CreateServerCFG()
         {
-            //No config file seems
+            UpdateServerCFG();
+        }
+
+        // - Update or create config file for max players param
+        public void UpdateServerCFG()
+        {
+            // Check config directory
+            string gameConfigDirectoryPath = Functions.ServerPath.GetServersServerFiles(_serverData.ServerID, @"FactoryGame\Saved\Config\WindowsServer");
+
+            if (!Directory.Exists(gameConfigDirectoryPath))
+            {
+                Directory.CreateDirectory(gameConfigDirectoryPath);
+            }
+
+            // Create config file
+            string gameConfigPath = Functions.ServerPath.GetServersServerFiles(_serverData.ServerID, @"FactoryGame\Saved\Config\WindowsServer\Game.ini");
+            string gameConfigContentString = "[/Script/Engine.GameSession]\nMaxPlayers=" + _serverData.ServerMaxPlayer;
+            byte[] info = new UTF8Encoding(true).GetBytes(gameConfigContentString);
+
+            if (!File.Exists(gameConfigPath))
+            {
+                FileStream gameConfigFs = File.Create(gameConfigPath);
+                gameConfigFs.Write(info, 0, info.Length);
+            }
+            else
+            {
+                string fileContent = File.ReadAllText(gameConfigPath);
+                File.WriteAllText(gameConfigPath, Regex.Replace(fileContent, @"MaxPlayers=[0-9]*", $"MaxPlayers={_serverData.ServerMaxPlayer}"));
+            }
         }
 
         // - Start server function, return its Process to WindowsGSM
@@ -73,12 +102,13 @@ namespace WindowsGSM.Plugins
                 return null;
             }
 
+            UpdateServerCFG();
+
             // Prepare start parameter
             string param = "FactoryGame -log -unattended";
             param += $" {_serverData.ServerParam}";
             param += string.IsNullOrWhiteSpace(_serverData.ServerPort) ? string.Empty : $" -Port={_serverData.ServerPort}"; 
             param += string.IsNullOrWhiteSpace(_serverData.ServerQueryPort) ? string.Empty : $" -ServerQueryPort={_serverData.ServerQueryPort}";
-            param += string.IsNullOrWhiteSpace(_serverData.ServerMaxPlayer) ? string.Empty : $" -MaxPlayers={_serverData.ServerMaxPlayer}";
             //param += string.IsNullOrWhiteSpace(_serverData.ServerIP) ? string.Empty : $" -Multihome={_serverData.ServerIP}";
 
             // Prepare Process
@@ -126,7 +156,7 @@ namespace WindowsGSM.Plugins
         }
 
 
-// - Stop server function
+        // - Stop server function
         public async Task Stop(Process p)
         {
             await Task.Run(() =>
@@ -137,10 +167,10 @@ namespace WindowsGSM.Plugins
             });
         }
 
-// fixes WinGSM bug, https://github.com/WindowsGSM/WindowsGSM/issues/57#issuecomment-983924499
+        // fixes WinGSM bug, https://github.com/WindowsGSM/WindowsGSM/issues/57#issuecomment-983924499
         public async Task<Process> Update(bool validate = false, string custom = null)
         {
-            var (p, error) = await Installer.SteamCMD.UpdateEx(serverData.ServerID, AppId, validate, custom: custom, loginAnonymous: loginAnonymous);
+            var (p, error) = await Installer.SteamCMD.UpdateEx(serverData.ServerID, AppId, validate, custom: _serverData.ServerBeta, loginAnonymous: loginAnonymous);
             Error = error;
             await Task.Run(() => { p.WaitForExit(); });
             return p;
