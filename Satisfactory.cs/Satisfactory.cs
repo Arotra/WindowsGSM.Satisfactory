@@ -42,7 +42,7 @@ namespace WindowsGSM.Plugins
         public int PortIncrements = 1; // This tells WindowsGSM how many ports should skip after installation
 
         // TODO: Undisclosed method
-        public object QueryMethod = new A2S(); // Query method should be use on current server type. Accepted value: null or new A2S() or new FIVEM() or new UT3()
+        public object QueryMethod = null; // Query method should be use on current server type. Accepted value: null or new A2S() or new FIVEM() or new UT3()
 
         // - Game server default values
         public string Port = "7777"; // Default port
@@ -75,7 +75,7 @@ namespace WindowsGSM.Plugins
                 Directory.CreateDirectory(gameConfigDirectoryPath);
             }
 
-            // Create config file
+            // Create or update config file
             string gameConfigPath = Functions.ServerPath.GetServersServerFiles(_serverData.ServerID, @"FactoryGame\Saved\Config\WindowsServer\Game.ini");
             string gameConfigContentString = "[/Script/Engine.GameSession]\nMaxPlayers=" + _serverData.ServerMaxPlayer;
             byte[] info = new UTF8Encoding(true).GetBytes(gameConfigContentString);
