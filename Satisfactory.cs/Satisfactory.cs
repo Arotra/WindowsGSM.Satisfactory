@@ -168,7 +168,7 @@ namespace WindowsGSM.Plugins
         }
 
         // fixes WinGSM bug, https://github.com/WindowsGSM/WindowsGSM/issues/57#issuecomment-983924499
-        public async Task<Process> Update(bool validate = false, string custom = null)
+        public async Task<Process> Update(bool validate = true, string custom = null)
         {
             var (p, error) = await Installer.SteamCMD.UpdateEx(serverData.ServerID, AppId, validate, custom: _serverData.ServerBeta, loginAnonymous: loginAnonymous);
             Error = error;
